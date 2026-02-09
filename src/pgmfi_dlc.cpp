@@ -42,30 +42,54 @@ void Pgmfi_Dlc::loop(void) {
     }
 }
 
+/// @brief This method is called when a full message is received. It converts the message from 
+/// charater encoded hex to binary, decodes the message, and stores the results in the class variables for retrieval by the data() methods.
+/// For instance a message recived might look like this:
+/// "CB00000018096F8300602F010301F200067E0B" <- this is a TEXT string
+/// when decoded each 2 characters represent 1 byte of binary data. 
+/// So the actual message is 18 bytes long and looks like this in hex:
+/// 0xCB 0x00 0x00 0x00 0x18 0x09 0x6F 0x83 0x00 0x60 0x2F 0x01 0x03 0x01 0xF2 0x00 0x06 0x7E 0x0B
+/// the last byte is a checksum.
+/// Calculate it in Pyton like this:
+///
+/// def calculate_checksum(bytes_list):  # bytes_list = list of int (0–255)
+///    xor = 0
+///    for b in bytes_list[:-1]:        # all except the last (checksum) position
+///        xor ^= b
+///    return xor
+///
+/// @param msg a text string 
+/// @param len the length of the message in bytes. This should be the length of the charater encoded hex message excluding the start and end terminal characters. So it should be an even number.
 void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
+    
     Serial.write("RX: ");
     Serial.write(msg, len);
     Serial.write("\n");
     if (len % 2 != 0)
-        // It must be dividible by 2 to be a valid hex message.
+        // It must be dividible by 2 to be a valid character encoded hex message .
         return;
-    // This should be the message in Hex excluding the terinal begin/end.
+    // This should be the message using charater encoded Hex excluding the terminal begin/end.
+
+    //convert this TEXT to bytes.
     size_t binary_len = len / 2;
     uint8_t binary_msg[binary_len];
-    char * msg_ptr = (char*)msg;
+    char * msg_ptr = (char*)msg; //set the point to the first charater of the string.
     // convert it from hex to binary
     for (size_t i = 0; i < binary_len; i++) {
-        sscanf(msg_ptr, "%2hhX", &binary_msg[i]);
-        msg_ptr += 2;
+        // Use sscanf to convert the two-character hex string into the unsigned char
+        // "%2hhx" reads exactly two hexadecimal characters
+        sscanf(msg_ptr, "%2hhX", &binary_msg[i]);//convert the 2 text characters to a byte and store it in the binary message array.
+        msg_ptr += 2; //skip forward 2 places to the next hex byte in the string.
     }
 
-    // great lets decode it.
+    //OK, we have a message in binary format, lets decode it.
     QueryType query_type;
     if (!PGMFI_Decoder::decode_msg_type(binary_msg, binary_len, query_type))
         return;
     
     bool success = false;
     
+    //Now based on the type, try to decode the message.
     switch (query_type) {
         case QueryType::T_ECU_Info1:
             success = PGMFI_Decoder::decode(binary_msg, binary_len, ecu_info1);
@@ -86,7 +110,7 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
     if (!success)
         return;
     
-    // The results can be obtained by the data methods.
+    // Record the results so they can be obtained by a call to the data methods.
     msg_available_type = query_type;
     msg_available = true;
 }

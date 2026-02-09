@@ -6,13 +6,14 @@ using namespace DLC;
 bool PGMFI_Decoder::decode_msg_type(uint8_t * bytes, size_t len, QueryType &msg_type) {
     if (len < 2)
         return false;
-    
+    //must start with 0xCB
     if (bytes[0] != QUERY_START)
         // Only support decoding messages as a response to a data query.
         return false;
     
     bool success = true;
 
+    //The next byte tells us what type of message was received
     switch (bytes[1]) {
         case QUERY_ECU1:
             msg_type = QueryType::T_ECU_Info1;
