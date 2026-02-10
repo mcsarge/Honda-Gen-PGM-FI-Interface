@@ -16,9 +16,13 @@ void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     pinMode(tx_pin, OUTPUT);
 
     //Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, true);
-    Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, false); //temporary
+    Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, false); //temporary for testing
 }
 
+/// @brief This method should be called periodically to check for new messages. When a message is received, 
+/// it is processed and stored for retrieval by the data() methods. The messages are expected to be in a 
+/// specific format. They should start with the VT_MSG_START character, end with the VT_MSG_END character. 
+/// @param  
 void Pgmfi_Dlc::loop(void) {
     if (!Serial1.available()) {
         return;
@@ -44,14 +48,15 @@ void Pgmfi_Dlc::loop(void) {
 }
 
 /// @brief This method is called when a full message is received. It converts the message from 
-/// charater encoded hex to binary, decodes the message, and stores the results in the class variables for retrieval by the data() methods.
-/// For instance a message recived might look like this:
+/// charater encoded hex to binary, decodes the message, and stores the results in the class variables 
+/// for retrieval by the data() methods.
+/// For instance a message recived might look like this: 
 /// "CB00000018096F8300602F010301F200067E0B" <- this is a TEXT string
-/// when decoded each 2 characters represent 1 byte of binary data. 
+/// when decoded each 2 characters represent 1 byte of binary data (the last byte is a checksum). 
 /// So the actual message is 18 bytes long and looks like this in hex:
 /// 0xCB 0x00 0x00 0x00 0x18 0x09 0x6F 0x83 0x00 0x60 0x2F 0x01 0x03 0x01 0xF2 0x00 0x06 0x7E 0x0B
-/// the last byte is a checksum.
-/// Calculate it in Pyton like this:
+/// 
+/// Calculate the checksum in Python like this:
 ///
 /// def calculate_checksum(bytes_list):  # bytes_list = list of int (0–255)
 ///    xor = 0
@@ -63,23 +68,23 @@ void Pgmfi_Dlc::loop(void) {
 /// @param len the length of the message in bytes. This should be the length of the charater encoded hex message excluding the start and end terminal characters. So it should be an even number.
 void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
     
-    Serial.write("RX: ");
-    Serial.write(msg, len);
-    Serial.write("\n");
+    // For debug, remove for deployment.
+    //Serial.write("RX: ");
+    //Serial.write(msg, len);
+    //Serial.write("\n");
     if (len % 2 != 0)
-        // It must be dividible by 2 to be a valid character encoded hex message .
+        //The length must be dividible by 2 otherwise it is not a valid character encoded HEX.
         return;
-    // This should be the message using charater encoded Hex excluding the terminal begin/end.
 
-    //convert this TEXT to bytes.
+    //convert this TEXT to bytes. Every 2 characters is 1 byte
     size_t binary_len = len / 2;
     uint8_t binary_msg[binary_len];
-    char * msg_ptr = (char*)msg; //set the point to the first charater of the string.
-    // convert it from hex to binary
+    char * msg_ptr = (char*)msg; //set the pointer to the first charater of the string.
+    // convert every 2 text characters into a byte
     for (size_t i = 0; i < binary_len; i++) {
-        // Use sscanf to convert the two-character hex string into the unsigned char
+        // Use sscanf to convert a two-character hex string into the unsigned char (byte).
         // "%2hhx" reads exactly two hexadecimal characters
-        sscanf(msg_ptr, "%2hhX", &binary_msg[i]);//convert the 2 text characters to a byte and store it in the binary message array.
+        sscanf(msg_ptr, "%2hhX", &binary_msg[i]);
         msg_ptr += 2; //skip forward 2 places to the next hex byte in the string.
     }
 
@@ -109,7 +114,7 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
     }
 
     if (!success){
-        Serial.println("Failed to decode message");
+        //Serial.println("Failed to decode message");
         return;
     }
     
