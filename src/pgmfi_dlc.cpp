@@ -15,7 +15,8 @@ void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     pinMode(rx_pin, INPUT);
     pinMode(tx_pin, OUTPUT);
 
-    Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, true);
+    //Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, true);
+    Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, false); //temporary
 }
 
 void Pgmfi_Dlc::loop(void) {
@@ -107,8 +108,10 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
             break;
     }
 
-    if (!success)
+    if (!success){
+        Serial.println("Failed to decode message");
         return;
+    }
     
     // Record the results so they can be obtained by a call to the data methods.
     msg_available_type = query_type;
