@@ -15,8 +15,8 @@ void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     pinMode(rx_pin, INPUT);
     pinMode(tx_pin, OUTPUT);
 
-    //Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, true);
-    Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, false); //temporary for testing
+    Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, true);
+    //Serial1.begin(UART_BAUD, SERIAL_8N1, rx_pin, tx_pin, false); //temporary for testing
 }
 
 /// @brief This method should be called periodically to check for new messages. When a message is received, 
