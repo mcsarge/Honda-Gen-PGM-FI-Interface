@@ -7,7 +7,7 @@ using namespace DLC;
 
 
 Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false), last_send_time(0),
-    message_cb(nullptr), tester_present_logging_enabled(false) {}
+    message_cb(nullptr), tester_present_logging_enabled(false), tester_present_enabled(true) {}
 
 void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     this->rx_pin = rx_pin;
@@ -28,7 +28,7 @@ void Pgmfi_Dlc::loop(void) {
     if (!Serial1.available()) {
         // Nothing to read. Keep the DLC interface awake by sending a "tester present"
         // message if we haven't sent anything in a while.
-        if (millis() - last_send_time >= TESTER_PRESENT_INTERVAL_MS) {
+        if (tester_present_enabled && millis() - last_send_time >= TESTER_PRESENT_INTERVAL_MS) {
             const uint8_t testerPresentCmd[] = {0x02, 0x3E, 0x00, 0xC0};
             send_message((uint8_t*)testerPresentCmd, sizeof(testerPresentCmd));
             if (tester_present_logging_enabled && message_cb) {
@@ -204,6 +204,10 @@ void Pgmfi_Dlc::set_message_callback(MessageCallback cb) {
 
 void Pgmfi_Dlc::set_tester_present_logging(bool enabled) {
     tester_present_logging_enabled = enabled;
+}
+
+void Pgmfi_Dlc::set_tester_present_enabled(bool enabled) {
+    tester_present_enabled = enabled;
 }
 
 bool Pgmfi_Dlc::data(ECU_Info1 &ecu) {

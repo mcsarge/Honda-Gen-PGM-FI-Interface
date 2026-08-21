@@ -34,6 +34,7 @@ class Pgmfi_Dlc {
         bool data(Inverter_Slave &inv);
         void set_message_callback(MessageCallback cb);
         void set_tester_present_logging(bool enabled);
+        void set_tester_present_enabled(bool enabled);
     protected:
         void send_message(uint8_t * msg, size_t len);
         void recieve_message(uint8_t * msg, size_t len);
@@ -50,6 +51,7 @@ class Pgmfi_Dlc {
         unsigned long last_send_time;
         MessageCallback message_cb;
         bool tester_present_logging_enabled;
+        bool tester_present_enabled;
 
 };
 
