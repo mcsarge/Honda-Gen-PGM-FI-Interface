@@ -15,6 +15,8 @@ namespace DLC {
 // Positive response service ID: the ECU echoes the tester-present service ID (0x3E)
 // with 0x40 added to acknowledge it.
 #define TESTER_PRESENT_POSITIVE_RESPONSE_SID 0x7E
+// Max number of raw received bytes included in a raw-message-logging callback message.
+#define RAW_MESSAGE_LOG_BYTES 7
 
 // Generic message callback, used to notify the application of library events
 // (e.g. tester-present sent/received, and potentially future error/status messages).
@@ -35,6 +37,7 @@ class Pgmfi_Dlc {
         void set_message_callback(MessageCallback cb);
         void set_tester_present_logging(bool enabled);
         void set_tester_present_enabled(bool enabled);
+        void set_raw_message_logging(bool enabled);
     protected:
         void send_message(uint8_t * msg, size_t len);
         void recieve_message(uint8_t * msg, size_t len);
@@ -52,6 +55,7 @@ class Pgmfi_Dlc {
         MessageCallback message_cb;
         bool tester_present_logging_enabled;
         bool tester_present_enabled;
+        bool raw_message_logging_enabled;
 
 };
 

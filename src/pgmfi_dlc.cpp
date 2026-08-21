@@ -7,7 +7,8 @@ using namespace DLC;
 
 
 Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false), last_send_time(0),
-    message_cb(nullptr), tester_present_logging_enabled(false), tester_present_enabled(true) {}
+    message_cb(nullptr), tester_present_logging_enabled(false), tester_present_enabled(true),
+    raw_message_logging_enabled(false) {}
 
 void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     this->rx_pin = rx_pin;
@@ -79,11 +80,27 @@ void Pgmfi_Dlc::loop(void) {
 /// @param msg a text string 
 /// @param len the length of the message in bytes. This should be the length of the charater encoded hex message excluding the start and end terminal characters. So it should be an even number.
 void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
-    
+
     // For debug, remove for deployment.
     //Serial.write("RX: ");
     //Serial.write(msg, len);
     //Serial.write("\n");
+
+    // Dump the raw bytes received (as hex, in case they're unprintable) so the
+    // application can help diagnose cases like getting no tester-present response.
+    if (raw_message_logging_enabled && message_cb) {
+        size_t dump_len = len < RAW_MESSAGE_LOG_BYTES ? len : RAW_MESSAGE_LOG_BYTES;
+        char hex_part[(RAW_MESSAGE_LOG_BYTES * 3) + 1];
+        size_t hex_pos = 0;
+        for (size_t i = 0; i < dump_len; i++) {
+            hex_pos += snprintf(hex_part + hex_pos, sizeof(hex_part) - hex_pos, "%02X ", msg[i]);
+        }
+        char log_msg[64];
+        snprintf(log_msg, sizeof(log_msg), "DLC: received %u bytes: %s%s",
+            (unsigned)len, hex_part, (len > RAW_MESSAGE_LOG_BYTES) ? "..." : "");
+        message_cb(log_msg);
+    }
+
     if (len % 2 != 0)
         //The length must be dividible by 2 otherwise it is not a valid character encoded HEX.
         return;
@@ -208,6 +225,10 @@ void Pgmfi_Dlc::set_tester_present_logging(bool enabled) {
 
 void Pgmfi_Dlc::set_tester_present_enabled(bool enabled) {
     tester_present_enabled = enabled;
+}
+
+void Pgmfi_Dlc::set_raw_message_logging(bool enabled) {
+    raw_message_logging_enabled = enabled;
 }
 
 bool Pgmfi_Dlc::data(ECU_Info1 &ecu) {
