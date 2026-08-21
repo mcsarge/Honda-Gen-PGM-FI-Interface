@@ -6,9 +6,8 @@
 using namespace DLC;
 
 
-Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false), last_send_time(0),
-    message_cb(nullptr), tester_present_logging_enabled(false), tester_present_enabled(true),
-    raw_message_logging_enabled(false) {}
+Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false),
+    message_cb(nullptr), raw_message_logging_enabled(false) {}
 
 void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     this->rx_pin = rx_pin;
@@ -27,15 +26,6 @@ void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
 /// @param  
 void Pgmfi_Dlc::loop(void) {
     if (!Serial1.available()) {
-        // Nothing to read. Keep the DLC interface awake by sending a "tester present"
-        // message if we haven't sent anything in a while.
-        if (tester_present_enabled && millis() - last_send_time >= TESTER_PRESENT_INTERVAL_MS) {
-            const uint8_t testerPresentCmd[] = {0x02, 0x3E, 0x00, 0xC0};
-            send_message((uint8_t*)testerPresentCmd, sizeof(testerPresentCmd));
-            if (tester_present_logging_enabled && message_cb) {
-                message_cb("DLC: tester present sent");
-            }
-        }
         return;
     }
     while (true) {
@@ -87,19 +77,8 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
     //Serial.write("\n");
 
     // Dump the raw bytes received (as hex, in case they're unprintable) so the
-    // application can help diagnose cases like getting no tester-present response.
-    if (raw_message_logging_enabled && message_cb) {
-        size_t dump_len = len < RAW_MESSAGE_LOG_BYTES ? len : RAW_MESSAGE_LOG_BYTES;
-        char hex_part[(RAW_MESSAGE_LOG_BYTES * 3) + 1];
-        size_t hex_pos = 0;
-        for (size_t i = 0; i < dump_len; i++) {
-            hex_pos += snprintf(hex_part + hex_pos, sizeof(hex_part) - hex_pos, "%02X ", msg[i]);
-        }
-        char log_msg[64];
-        snprintf(log_msg, sizeof(log_msg), "DLC: received %u bytes: %s%s",
-            (unsigned)len, hex_part, (len > RAW_MESSAGE_LOG_BYTES) ? "..." : "");
-        message_cb(log_msg);
-    }
+    // application can help diagnose communication issues.
+    log_raw_message("RX", msg, len);
 
     if (len % 2 != 0)
         //The length must be dividible by 2 otherwise it is not a valid character encoded HEX.
@@ -115,16 +94,6 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
         // "%2hhx" reads exactly two hexadecimal characters
         sscanf(msg_ptr, "%2hhX", &binary_msg[i]);
         msg_ptr += 2; //skip forward 2 places to the next hex byte in the string.
-    }
-
-    // The ECU acknowledges a tester-present message with a positive response
-    // (service ID 0x3E + 0x40 = 0x7E), e.g. 02 7E 00 84. Nothing to decode,
-    // just discard it.
-    if (binary_len >= 2 && binary_msg[1] == TESTER_PRESENT_POSITIVE_RESPONSE_SID) {
-        if (tester_present_logging_enabled && message_cb) {
-            message_cb("DLC: tester present response received");
-        }
-        return;
     }
 
     //OK, we have a message in binary format, lets decode it.
@@ -162,6 +131,22 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
     msg_available = true;
 }
 
+void Pgmfi_Dlc::log_raw_message(const char * direction, uint8_t * data, size_t len) {
+    if (!(raw_message_logging_enabled && message_cb))
+        return;
+
+    size_t dump_len = len < RAW_MESSAGE_LOG_BYTES ? len : RAW_MESSAGE_LOG_BYTES;
+    char hex_part[(RAW_MESSAGE_LOG_BYTES * 3) + 1];
+    size_t hex_pos = 0;
+    for (size_t i = 0; i < dump_len; i++) {
+        hex_pos += snprintf(hex_part + hex_pos, sizeof(hex_part) - hex_pos, "%02X ", data[i]);
+    }
+    char log_msg[64];
+    snprintf(log_msg, sizeof(log_msg), "%s: %u bytes: %s%s",
+        direction, (unsigned)len, hex_part, (len > RAW_MESSAGE_LOG_BYTES) ? "..." : "");
+    message_cb(log_msg);
+}
+
 void Pgmfi_Dlc::send_message(uint8_t * msg, size_t len) {
     // Takes a binary string and converts it to Hex and sents it as a terminal message.
     // bin to ascii = *2. + a header, end, and null terminator.
@@ -178,8 +163,10 @@ void Pgmfi_Dlc::send_message(uint8_t * msg, size_t len) {
     tx_buff[index++] = VT_MSG_END;
     tx_buff[index] = 0x00;
 
+    // Dump the raw bytes being sent (as hex) for the same reason we dump received bytes.
+    log_raw_message("TX", (uint8_t*)(tx_buff + 1), len * 2);
+
     Serial1.write(tx_buff);
-    last_send_time = millis();
 }
 
 void Pgmfi_Dlc::query(QueryType type) {
@@ -217,14 +204,6 @@ bool Pgmfi_Dlc::available(QueryType type) {
 
 void Pgmfi_Dlc::set_message_callback(MessageCallback cb) {
     message_cb = cb;
-}
-
-void Pgmfi_Dlc::set_tester_present_logging(bool enabled) {
-    tester_present_logging_enabled = enabled;
-}
-
-void Pgmfi_Dlc::set_tester_present_enabled(bool enabled) {
-    tester_present_enabled = enabled;
 }
 
 void Pgmfi_Dlc::set_raw_message_logging(bool enabled) {
