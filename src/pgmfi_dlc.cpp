@@ -29,7 +29,7 @@ void Pgmfi_Dlc::loop(void) {
         // message if we haven't sent anything in a while.
         if (millis() - last_send_time >= TESTER_PRESENT_INTERVAL_MS) {
             const uint8_t testerPresentCmd[] = {0x02, 0x3E, 0x00, 0xC0};
-            Serial.println("DLC: sending tester present");
+            //Serial.println("DLC: sending tester present"); // For debug, remove for deployment.
             send_message((uint8_t*)testerPresentCmd, sizeof(testerPresentCmd));
         }
         return;
@@ -101,7 +101,7 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
     // (service ID 0x3E + 0x40 = 0x7E), e.g. 02 7E 00 84. Nothing to decode,
     // just discard it.
     if (binary_len >= 2 && binary_msg[1] == TESTER_PRESENT_POSITIVE_RESPONSE_SID) {
-        Serial.println("DLC: tester present response received");
+        //Serial.println("DLC: tester present response received"); // For debug, remove for deployment.
         return;
     }
 
