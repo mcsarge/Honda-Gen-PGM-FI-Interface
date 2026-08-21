@@ -8,9 +8,13 @@ namespace DLC {
 
 #define UART_BAUD 9600
 #define QUERY_SIZE 4
-#define RX_BUFF_SIZE 128
+#define RX_BUFF_SIZE 256
 #define VT_MSG_START 0x01
 #define VT_MSG_END 0x04
+#define TESTER_PRESENT_INTERVAL_MS 2500
+// Positive response service ID: the ECU echoes the tester-present service ID (0x3E)
+// with 0x40 added to acknowledge it.
+#define TESTER_PRESENT_POSITIVE_RESPONSE_SID 0x7E
 
 // Handles the physical interface of the Honda Data Link Connector port.
 class Pgmfi_Dlc {
@@ -37,7 +41,8 @@ class Pgmfi_Dlc {
         Inverter_Slave inv_slave;
         bool msg_available;
         QueryType msg_available_type;
-        
+        unsigned long last_send_time;
+
 };
 
 extern Pgmfi_Dlc dlc_interface;

@@ -6,7 +6,7 @@
 using namespace DLC;
 
 
-Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false) {}
+Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false), last_send_time(0) {}
 
 void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     this->rx_pin = rx_pin;
@@ -25,6 +25,12 @@ void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
 /// @param  
 void Pgmfi_Dlc::loop(void) {
     if (!Serial1.available()) {
+        // Nothing to read. Keep the DLC interface awake by sending a "tester present"
+        // message if we haven't sent anything in a while.
+        if (millis() - last_send_time >= TESTER_PRESENT_INTERVAL_MS) {
+            const uint8_t testerPresentCmd[] = {0x02, 0x3E, 0x00, 0xC0};
+            send_message((uint8_t*)testerPresentCmd, sizeof(testerPresentCmd));
+        }
         return;
     }
     while (true) {
@@ -40,10 +46,12 @@ void Pgmfi_Dlc::loop(void) {
             return;
         } else if(byte == VT_MSG_END) {
             recieve_message(rx_buffer, rx_index);
-        } else {
+        } else if (rx_index < RX_BUFF_SIZE) {
             rx_buffer[rx_index] = byte;
             rx_index += 1;
         }
+        // else: buffer full without a VT_MSG_END, drop bytes until the next
+        // VT_MSG_START or VT_MSG_END so we never write past rx_buffer.
     }
 }
 
@@ -87,6 +95,11 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
         sscanf(msg_ptr, "%2hhX", &binary_msg[i]);
         msg_ptr += 2; //skip forward 2 places to the next hex byte in the string.
     }
+
+    // The ECU acknowledges a tester-present message with a positive response
+    // (service ID 0x3E + 0x40 = 0x7E). Nothing to decode, just discard it.
+    if (binary_len >= 1 && binary_msg[0] == TESTER_PRESENT_POSITIVE_RESPONSE_SID)
+        return;
 
     //OK, we have a message in binary format, lets decode it.
     QueryType query_type;
@@ -140,6 +153,7 @@ void Pgmfi_Dlc::send_message(uint8_t * msg, size_t len) {
     tx_buff[index] = 0x00;
 
     Serial1.write(tx_buff);
+    last_send_time = millis();
 }
 
 void Pgmfi_Dlc::query(QueryType type) {
