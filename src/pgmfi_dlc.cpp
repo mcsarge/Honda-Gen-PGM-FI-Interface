@@ -7,7 +7,7 @@ using namespace DLC;
 
 
 Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false), last_send_time(0),
-    message_cb(nullptr), tester_present_logging_enabled(true) {}
+    message_cb(nullptr), tester_present_logging_enabled(false) {}
 
 void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     this->rx_pin = rx_pin;
