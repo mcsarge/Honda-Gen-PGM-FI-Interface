@@ -98,8 +98,9 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
     }
 
     // The ECU acknowledges a tester-present message with a positive response
-    // (service ID 0x3E + 0x40 = 0x7E). Nothing to decode, just discard it.
-    if (binary_len >= 1 && binary_msg[0] == TESTER_PRESENT_POSITIVE_RESPONSE_SID) {
+    // (service ID 0x3E + 0x40 = 0x7E), e.g. 02 7E 00 84. Nothing to decode,
+    // just discard it.
+    if (binary_len >= 2 && binary_msg[1] == TESTER_PRESENT_POSITIVE_RESPONSE_SID) {
         Serial.println("DLC: tester present response received");
         return;
     }
