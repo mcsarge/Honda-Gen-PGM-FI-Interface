@@ -16,6 +16,10 @@ namespace DLC {
 // with 0x40 added to acknowledge it.
 #define TESTER_PRESENT_POSITIVE_RESPONSE_SID 0x7E
 
+// Generic message callback, used to notify the application of library events
+// (e.g. tester-present sent/received, and potentially future error/status messages).
+typedef void (*MessageCallback)(const char* message);
+
 // Handles the physical interface of the Honda Data Link Connector port.
 class Pgmfi_Dlc {
     public:
@@ -28,6 +32,8 @@ class Pgmfi_Dlc {
         bool data(ECU_Info2 &ecu);
         bool data(Inverter_Master &inv);
         bool data(Inverter_Slave &inv);
+        void set_message_callback(MessageCallback cb);
+        void set_tester_present_logging(bool enabled);
     protected:
         void send_message(uint8_t * msg, size_t len);
         void recieve_message(uint8_t * msg, size_t len);
@@ -42,6 +48,8 @@ class Pgmfi_Dlc {
         bool msg_available;
         QueryType msg_available_type;
         unsigned long last_send_time;
+        MessageCallback message_cb;
+        bool tester_present_logging_enabled;
 
 };
 

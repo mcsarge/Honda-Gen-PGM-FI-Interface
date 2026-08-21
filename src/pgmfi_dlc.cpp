@@ -6,7 +6,8 @@
 using namespace DLC;
 
 
-Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false), last_send_time(0) {}
+Pgmfi_Dlc::Pgmfi_Dlc(): rx_index(0), msg_available(false), last_send_time(0),
+    message_cb(nullptr), tester_present_logging_enabled(true) {}
 
 void Pgmfi_Dlc::begin(uint8_t rx_pin, uint8_t tx_pin) {
     this->rx_pin = rx_pin;
@@ -29,8 +30,10 @@ void Pgmfi_Dlc::loop(void) {
         // message if we haven't sent anything in a while.
         if (millis() - last_send_time >= TESTER_PRESENT_INTERVAL_MS) {
             const uint8_t testerPresentCmd[] = {0x02, 0x3E, 0x00, 0xC0};
-            //Serial.println("DLC: sending tester present"); // For debug, remove for deployment.
             send_message((uint8_t*)testerPresentCmd, sizeof(testerPresentCmd));
+            if (tester_present_logging_enabled && message_cb) {
+                message_cb("DLC: tester present sent");
+            }
         }
         return;
     }
@@ -101,7 +104,9 @@ void Pgmfi_Dlc::recieve_message(uint8_t * msg, size_t len) {
     // (service ID 0x3E + 0x40 = 0x7E), e.g. 02 7E 00 84. Nothing to decode,
     // just discard it.
     if (binary_len >= 2 && binary_msg[1] == TESTER_PRESENT_POSITIVE_RESPONSE_SID) {
-        //Serial.println("DLC: tester present response received"); // For debug, remove for deployment.
+        if (tester_present_logging_enabled && message_cb) {
+            message_cb("DLC: tester present response received");
+        }
         return;
     }
 
@@ -191,6 +196,14 @@ bool Pgmfi_Dlc::available(QueryType type) {
     if (msg_available && msg_available_type == type)
         return true;
     return false;
+}
+
+void Pgmfi_Dlc::set_message_callback(MessageCallback cb) {
+    message_cb = cb;
+}
+
+void Pgmfi_Dlc::set_tester_present_logging(bool enabled) {
+    tester_present_logging_enabled = enabled;
 }
 
 bool Pgmfi_Dlc::data(ECU_Info1 &ecu) {
